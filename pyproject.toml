@@ -1,0 +1,26 @@
+[project]
+name = "f1-pit-window"
+version = "2.0.0"
+description = "A reproducible ML pipeline for estimating near-term pit-window likelihood from historical FastF1 race data."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = "test_*.py"
+addopts = "-ra --strict-markers --cov=f1_pit_window --cov-report=term-missing --cov-fail-under=85"
+
+[tool.coverage.run]
+# Excluded from the unit-test coverage ratio, not from testing: these three
+# are integration-boundary code (a Streamlit UI, a live FastF1 network
+# client, a declarative SQLAlchemy schema) whose correctness is exercised by
+# `docker-compose up` and a real ingest run, not a unit test asserting
+# against a mocked network call or a rendered widget tree. Business logic
+# stays held to the 85% floor below.
+omit = [
+    "src/f1_pit_window/app/streamlit_app.py",
+    "src/f1_pit_window/ingestion/fastf1_client.py",
+    "src/f1_pit_window/data/schema.py",
+]
+
+# flake8 doesn't read [tool.*] sections natively — its config lives in setup.cfg.

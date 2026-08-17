@@ -1,0 +1,35 @@
+# ============================================================================
+# PRODUCTION DEPENDENCIES (Pinned to specific versions)
+# ============================================================================
+
+# Data Processing
+pandas==2.0.3
+numpy==1.24.3
+pyarrow==12.0.1
+
+# Machine Learning
+scikit-learn==1.3.0
+xgboost==1.7.6
+
+# Visualization & Dashboard
+plotly==5.16.1
+streamlit==1.28.0
+
+# Data Sources
+fastf1==3.8.3
+
+# Database
+sqlalchemy==2.0.20
+psycopg2-binary==2.9.7
+
+# Validation & Config
+pydantic==2.2.1
+python-dotenv==1.0.0
+
+# ============================================================================
+# DEVELOPMENT DEPENDENCIES
+# ============================================================================
+
+pytest==7.4.0
+pytest-cov==4.1.0
+flake8==6.1.0

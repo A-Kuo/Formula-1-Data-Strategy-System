@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  streamlit:
+    build: .
+    container_name: f1-pit-window-streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/f1_pit_db
+      - STREAMLIT_LOGGER_LEVEL=info
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./.cache:/app/.cache
+    networks:
+      - f1-network
+    command: streamlit run src/f1_pit_window/app/streamlit_app.py
+
+  # db/metrics_view.sql (generated from the feature registry, see `make view`)
+  # is intentionally NOT mounted as a docker-entrypoint-initdb.d script here:
+  # the view's `FROM laps` clause requires the `laps` table, which is created
+  # at application level (scripts/ingest_data.py's Base.metadata.create_all),
+  # not at container boot. Run `make apply-view` after the first ingest —
+  # see scripts/apply_metrics_view.py.
+  postgres:
+    image: postgres:15-alpine
+    container_name: f1-pit-window-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=f1_pit_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - f1-network
+
+networks:
+  f1-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

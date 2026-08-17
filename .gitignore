@@ -1,0 +1,100 @@
+.gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Data cache
+.cache/
+/tmp/
+/fastf1_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Secrets (DO NOT COMMIT)
+.env
+.env.local
+*.key
+*credentials*
+*secret*
+config.ini
+
+# Large / generated files. Deliberately NOT force-tracking models/*.pkl here
+# (the prior repo did) — this project's positioning is "dynamic data
+# refreshes and model training" (`make ingest && make train`), so trained
+# artifacts are a build output, not a committed binary. Regenerate them
+# locally; don't expect them present after a fresh clone.
+*.pkl
+*.csv
+*.parquet
+*.h5
+*.npy
+!models/.gitkeep
+!results/.gitkeep
+!artifacts/.gitkeep
+
+# Docker/testing artifacts
+docker-compose.log
+docker-compose.pid
+*.pid
+
+# Cursor IDE
+.cursor/
+*.cursorrules
+.cursorignore
+
+# AI agent artifacts (internal use only)
+agent-transcripts/
+terminals/
+mcps/
+.codex/
+.claude/
+claude_files/
+AGENT3.md
+PROMPTS.md
+
+# Local logs and output
+*.log
+output/
+figures/
