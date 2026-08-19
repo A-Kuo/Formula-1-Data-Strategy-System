@@ -1,0 +1,130 @@
+name: Scheduled retrain — refresh F1 data and retrain the model
+
+# Runs roughly every 4 months (Jan 1 / May 1 / Sep 1, 06:00 UTC), taken
+# literally as three fixed points a year rather than an F1-calendar-aware
+# schedule. See docs/decisions/ for why: test_years is always the most
+# recently *fully completed* season (current_year - 1), never the
+# in-progress one, to avoid a partial-season holdout — see
+# docs/decisions/002-temporal-validation.md. Two of every three runs in a
+# given calendar year reuse the same train/test split as the run before it
+# (the split only rolls forward once the year advances); each run still
+# re-ingests and re-trains from scratch, so it's a real refresh every time,
+# not a no-op.
+#
+# Uses a fresh, ephemeral Postgres service container per run (same pattern
+# as ci.yml) rather than a persisted database — there is no live deployment
+# target yet to persist one against, and scripts/ingest_data.py dedupes per
+# race (year + race_name) before insert, so a full re-ingest each run is
+# idempotent and reproducible rather than a workaround.
+#
+# On success, publishes two artifacts with different lifetimes: the model
+# binaries go to a dated GitHub Release (not committed to git — see the
+# rationale comment in .gitignore), and a new row in the git-tracked
+# metrics/benchmark_results.csv is committed directly to the branch.
+# scripts/validate_artifacts.py is the pass/fail gate between "trained" and
+# "published" — a failing run stops here: no release, no commit, and the
+# workflow shows red on the Actions tab, which is the whole notification
+# mechanism for "no human in the loop unless validation fails."
+
+on:
+  schedule:
+    - cron: "0 6 1 1,5,9 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: f1_pit_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f1_pit_db
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compute train/test years
+        id: years
+        run: |
+          CURRENT_YEAR=$(date -u +%Y)
+          TEST_YEAR=$((CURRENT_YEAR - 1))
+          TRAIN_END_YEAR=$((TEST_YEAR - 1))
+          TRAIN_YEARS=$(seq 2018 "$TRAIN_END_YEAR" | paste -sd, -)
+          ALL_YEARS="${TRAIN_YEARS},${TEST_YEAR}"
+          echo "train_years=${TRAIN_YEARS}" >> "$GITHUB_OUTPUT"
+          echo "test_years=${TEST_YEAR}" >> "$GITHUB_OUTPUT"
+          echo "all_years=${ALL_YEARS}" >> "$GITHUB_OUTPUT"
+          echo "run_date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "Computed train_years=${TRAIN_YEARS} test_years=${TEST_YEAR}"
+
+      - name: Ingest FastF1 race data
+        run: python scripts/ingest_data.py --years "${{ steps.years.outputs.all_years }}"
+
+      - name: Apply canonical metrics view
+        run: python scripts/apply_metrics_view.py
+
+      - name: Train model
+        run: |
+          python scripts/train_model.py \
+            --train-years "${{ steps.years.outputs.train_years }}" \
+            --test-years "${{ steps.years.outputs.test_years }}"
+
+      - name: Validate trained artifacts
+        run: python scripts/validate_artifacts.py
+
+      - name: Record pipeline benchmark
+        run: |
+          python scripts/run_benchmark.py \
+            --train-years "${{ steps.years.outputs.train_years }}" \
+            --test-years "${{ steps.years.outputs.test_years }}"
+
+      - name: Commit updated benchmark history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add metrics/benchmark_results.csv
+          git diff --cached --quiet || git commit -m "chore: scheduled retrain benchmark $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Generate release notes
+        run: python scripts/format_release_notes.py > release_notes.md
+
+      - name: Publish model artifacts as a dated release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: models-${{ steps.years.outputs.run_date }}
+          name: "Model refresh — ${{ steps.years.outputs.test_years }} season holdout"
+          body_path: release_notes.md
+          files: |
+            models/xgboost_model.pkl
+            models/scaler.pkl
+            models/metrics.pkl
+            models/X_test_scaled.npy
+            models/y_test.npy

@@ -3,8 +3,12 @@
 # ============================================================================
 
 # Data Processing
-pandas==2.0.3
-numpy==1.24.3
+# numpy/pandas pinned to satisfy fastf1==3.8.3 (needs numpy>=1.26.0 and
+# pandas>=2.1.1) while staying under streamlit==1.28.0's numpy<2 ceiling.
+# The prior pins (numpy 1.24.3 / pandas 2.0.3) were below fastf1's floors,
+# so the requirement set could never be installed.
+pandas==2.1.4
+numpy==1.26.4
 pyarrow==12.0.1
 
 # Machine Learning

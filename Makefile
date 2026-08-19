@@ -1,4 +1,4 @@
-.PHONY: help install test lint gate view apply-view db-up db-down ingest train app docker-up docker-down clean
+.PHONY: help install test lint gate view apply-view db-up db-down ingest train benchmark app docker-up docker-down clean
 
 help:
 	@echo "install      - pip install requirements"
@@ -11,6 +11,7 @@ help:
 	@echo "db-down      - stop it"
 	@echo "ingest       - run scripts/ingest_data.py against DATABASE_URL"
 	@echo "train        - run scripts/train_model.py against DATABASE_URL"
+	@echo "benchmark    - time the load/feature-build/train stages, append to metrics/benchmark_results.csv"
 	@echo "app          - run the Streamlit app locally"
 	@echo "docker-up    - full stack: Postgres + Streamlit via docker-compose"
 	@echo "docker-down  - stop the full stack"
@@ -23,7 +24,7 @@ test:
 	pytest tests/ -v
 
 lint:
-	flake8 src tests scripts/generate_metrics_view.py
+	flake8 src tests scripts/generate_metrics_view.py scripts/run_benchmark.py scripts/validate_artifacts.py scripts/format_release_notes.py
 
 view:
 	python scripts/generate_metrics_view.py
@@ -47,6 +48,9 @@ ingest:
 
 train:
 	python scripts/train_model.py
+
+benchmark:
+	python scripts/run_benchmark.py
 
 app:
 	streamlit run src/f1_pit_window/app/streamlit_app.py

@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 
 class Status(str, Enum):
+    """Severity of a single check. An ``ERROR`` fails the batch; a ``WARNING`` is recorded but does not."""
+
     PASS = "PASS"
     WARNING = "WARNING"
     ERROR = "ERROR"
@@ -45,6 +47,8 @@ class Status(str, Enum):
 
 @dataclass(frozen=True)
 class CheckResult:
+    """One check's outcome: its name, category, severity, message, and how many rows it affected."""
+
     name: str
     category: str
     status: Status
@@ -61,6 +65,8 @@ class CheckResult:
 
 @dataclass
 class ValidationReport:
+    """The rolled-up result of a validation run; :attr:`passed` is True unless any check is an ERROR."""
+
     generated_at: datetime
     n_rows: int
     results: list[CheckResult] = field(default_factory=list)
@@ -131,6 +137,7 @@ def _add(
 
 
 def check_completeness(frame: pd.DataFrame, config: ValidationConfig) -> list[CheckResult]:
+    """Check required columns, per-column null rates, per-session driver coverage, and lap-sequence gaps."""
     results: list[CheckResult] = []
 
     missing_cols = [c for c in config.required_columns if c not in frame.columns]
@@ -198,6 +205,8 @@ def _find_lap_number_gaps(session: pd.DataFrame) -> list[tuple[int, int, int]]:
 
 
 def check_consistency(frame: pd.DataFrame, config: ValidationConfig) -> list[CheckResult]:
+    """Check cross-field invariants: monotonic gap-to-leader, tyre-age reset per stint, strictly increasing
+    lap numbers, and unique position per lap."""
     results: list[CheckResult] = []
     group_cols = [c for c in ("session_key", "driver_number") if c in frame.columns]
 
@@ -258,6 +267,7 @@ def _bounds_check(frame: pd.DataFrame, column: str, bounds: tuple[float, float])
 
 
 def check_reasonableness(frame: pd.DataFrame, config: ValidationConfig) -> list[CheckResult]:
+    """Check values against physically plausible bounds and flag lap times beyond nσ of each driver's median."""
     results: list[CheckResult] = []
 
     bounded = {

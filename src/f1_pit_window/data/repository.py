@@ -34,6 +34,9 @@ META_FILENAME = "meta.json"
 
 @dataclass(frozen=True)
 class GateDecision:
+    """The outcome of a publish attempt: whether the batch was published, why, its validation report, and the
+    snapshot path if it passed the gate."""
+
     published: bool
     reason: str
     report: ValidationReport

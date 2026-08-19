@@ -48,6 +48,12 @@ DEGRADATION_CLIP = 0.5
 
 @dataclass(frozen=True)
 class MetricDefinition:
+    """A single governed metric: its identity, semantics, effective date range, and pandas/SQL implementations.
+
+    Carries enough provenance (owner, rationale, version, ``effective_from``/``effective_to``) that a metric's
+    meaning and history are auditable, and a :meth:`fingerprint` so drift in its definition is detectable.
+    """
+
     key: str
     version: str
     title: str
@@ -89,12 +95,16 @@ class MetricDefinition:
 
 
 class MetricRegistry:
+    """An append-only, version-aware store of :class:`MetricDefinition` objects — the single source of truth
+    for what each metric means, keyed by ``key`` then ``version`` with at most one *current* version per key."""
+
     def __init__(self, definitions: Iterable[MetricDefinition] = ()) -> None:
         self._by_key: dict[str, dict[str, MetricDefinition]] = {}
         for definition in definitions:
             self.register(definition)
 
     def register(self, definition: MetricDefinition) -> None:
+        """Add a definition, rejecting a duplicate (key, version) pair so history is never silently overwritten."""
         versions = self._by_key.setdefault(definition.key, {})
         if definition.version in versions:
             raise ValueError(f"Duplicate definition {definition.qualified_name}")
@@ -108,6 +118,7 @@ class MetricRegistry:
         return sorted(self._by_key[key], key=lambda v: self._by_key[key][v].effective_from)
 
     def get(self, key: str, version: str | None = None) -> MetricDefinition:
+        """Return a metric by key — a specific ``version`` if given, otherwise the single current version."""
         self._require_key(key)
         versions = self._by_key[key]
         if version is not None:
@@ -120,6 +131,7 @@ class MetricRegistry:
         return current[0]
 
     def as_of(self, when: date) -> dict[str, MetricDefinition]:
+        """Return the definition of each metric that was live on ``when`` — a point-in-time view of the registry."""
         live: dict[str, MetricDefinition] = {}
         for key, versions in self._by_key.items():
             matches = [d for d in versions.values() if d.live_on(when)]
@@ -130,6 +142,7 @@ class MetricRegistry:
         return live
 
     def current(self) -> dict[str, MetricDefinition]:
+        """Return the current (canonical) version of every registered metric, keyed by metric name."""
         return {key: self.get(key) for key in self.keys()}
 
     def fingerprint(self) -> str:
@@ -143,6 +156,7 @@ class MetricRegistry:
         }
 
     def to_markdown(self) -> str:
+        """Render the whole registry (all metrics and versions) as a Markdown table for documentation."""
         lines = [f"# Canonical feature registry (`{self.fingerprint()}`)", "",
                  "| Metric | Version | Unit | Effective | Definition |", "| --- | --- | --- | --- | --- |"]
         for key in self.keys():
@@ -174,6 +188,11 @@ def _ordered(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def derive_stint(frame: pd.DataFrame) -> pd.Series:
+    """Derive a per-lap stint number from pit-lap flags, for frames that don't already carry ``stint_number``.
+
+    A new stint begins on the lap *after* each pit lap, so the count is a forward-shifted cumulative sum of
+    the pit-lap flag within each (session, driver) trace.
+    """
     ordered = _ordered(frame)
     group = ordered.groupby(_grouping(frame, TRACE_KEYS), sort=False)["is_pit_lap"]
     stint = group.transform(lambda s: s.astype(bool).shift(1, fill_value=False).cumsum())

@@ -78,6 +78,9 @@ def compute_target(frame: pd.DataFrame, lookahead_laps: int = 5) -> pd.Series:
 
 @dataclass(frozen=True)
 class TrainingSplit:
+    """A ready-to-train temporal split: scaled train/test feature matrices, targets, the fitted scaler, and
+    the feature column order (fit on the train fold only, to avoid leaking test-fold statistics)."""
+
     X_train: np.ndarray
     X_test: np.ndarray
     y_train: np.ndarray

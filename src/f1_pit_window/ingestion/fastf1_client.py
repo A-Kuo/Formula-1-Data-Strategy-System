@@ -22,6 +22,7 @@ which is tested against synthetic fixtures with no network involved.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pandas as pd
 
@@ -44,6 +45,11 @@ def fetch_session(year: int, race_num: int, cache_dir: str = ".cache/") -> tuple
     """
     import fastf1
 
+    # fastf1.Cache.enable_cache() requires the directory to already exist —
+    # on a fresh clone it doesn't, and the FastF1 error message for that
+    # ("Cache directory does not exist!") is easy to mistake for a network
+    # or credentials problem.
+    Path(cache_dir).mkdir(parents=True, exist_ok=True)
     fastf1.Cache.enable_cache(cache_dir)
 
     logger.info("Fetching %d race %d...", year, race_num)
@@ -55,7 +61,7 @@ def fetch_session(year: int, race_num: int, cache_dir: str = ".cache/") -> tuple
         logger.warning("  No laps found for %d R%d", year, race_num)
         return None, None
 
-    session_key = f"{session.event['Season']}-{session.event['RoundNumber']}"
+    session_key = f"{session.event.year}-{session.event['RoundNumber']}"
     raw = laps.copy()
     raw["session_key"] = session_key
     if "Driver" in raw.columns:
@@ -66,7 +72,7 @@ def fetch_session(year: int, race_num: int, cache_dir: str = ".cache/") -> tuple
     race_meta = {
         "year": year,
         "race_name": session.event["EventName"],
-        "circuit_name": session.event["Circuit"],
+        "circuit_name": session.event["Location"],
         "session_date": session.date if hasattr(session, "date") else None,
         "num_drivers": laps["Driver"].nunique(),
         "num_laps": laps["LapNumber"].max(),

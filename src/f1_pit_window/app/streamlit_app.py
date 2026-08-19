@@ -96,6 +96,7 @@ except Exception as exc:
 
 
 def view_race_state():
+    """Render the Race State view: feature sliders → a live pit-window probability and action label."""
     st.header("🏁 Race State")
     st.caption(
         "Estimate whether a driver is entering a near-term pit window, given a lap's feature state. "
@@ -140,6 +141,7 @@ def view_race_state():
 
 
 def view_decision_policy():
+    """Render the Decision Policy view: the threshold / precision-recall tradeoff as a named policy choice."""
     st.header("⚙️ Decision Policy")
     st.caption("The threshold is a policy choice, not a model output — pick it based on the cost of each error type.")
 
@@ -191,6 +193,7 @@ def view_decision_policy():
 
 
 def view_model_review():
+    """Render the Model Review view: held-out metrics, calibration reliability curve, and feature importance."""
     st.header("🔬 Model Review")
 
     sm = bundle["saved_metrics"]

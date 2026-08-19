@@ -80,7 +80,7 @@ class LapORM(Base):
     pit_in_time = Column(Float)
     pit_out_time = Column(Float)
 
-    tyre_compound = Column(String(10))
+    tyre_compound = Column(String(20))
     tyre_compound_raw = Column(String(20))
     tyre_life = Column(Integer)
     stint_number = Column(Integer)

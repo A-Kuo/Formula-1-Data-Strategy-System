@@ -25,6 +25,7 @@ MANIFEST
 
 # Virtual environments
 venv/
+.venv312/
 ENV/
 env/
 .venv
@@ -41,6 +42,12 @@ env/
 .cache/
 /tmp/
 /fastf1_cache/
+# FastF1 downloads its telemetry cache into these on first ingest. They are
+# regenerable (and large — several hundred MB), so they stay local rather than
+# in the repo; delete them to force a clean re-fetch.
+/cache/
+/2024/
+*.sqlite
 
 # Jupyter
 .ipynb_checkpoints/
@@ -73,6 +80,12 @@ config.ini
 !models/.gitkeep
 !results/.gitkeep
 !artifacts/.gitkeep
+
+# ...but metrics/benchmark_results.csv IS committed, deliberately — it's a
+# growing record of pipeline runtime/throughput across runs and commits
+# (see scripts/run_benchmark.py), not a regenerate-and-discard build
+# artifact like the model files above.
+!metrics/benchmark_results.csv
 
 # Docker/testing artifacts
 docker-compose.log

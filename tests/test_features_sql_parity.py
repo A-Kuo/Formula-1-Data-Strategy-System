@@ -110,16 +110,30 @@ class TestSqlPandasParity:
 def test_parity_against_live_postgres(laps_with_features):
     from sqlalchemy import create_engine
 
+    # Isolated table/view names: this test must never touch the real "laps"
+    # table or "canonical_lap_metrics" view on whatever DATABASE_URL points
+    # to (e.g. a developer's already-ingested dev database) — it previously
+    # used to_sql(..., if_exists="replace") directly against "laps", which
+    # silently dropped and rebuilt that table with only these 8 columns and
+    # left the fixture rows behind. See docs/decisions/ for the writeup.
+    test_table = "laps_sql_parity_test"
+    test_view = "canonical_lap_metrics_sql_parity_test"
+
     engine = create_engine(os.environ["DATABASE_URL"])
     load_columns = [
         "session_key", "driver_number", "lap_number", "stint_number",
         "lap_time_seconds", "is_pit_lap", "pit_in_time", "pit_out_time",
     ]
-    laps_with_features[load_columns].to_sql("laps", engine, if_exists="replace", index=False)
+    try:
+        laps_with_features[load_columns].to_sql(test_table, engine, if_exists="replace", index=False)
 
-    with engine.begin() as conn:
-        conn.exec_driver_sql(build_metrics_view_sql())
-        sql_result = pd.read_sql("SELECT * FROM canonical_lap_metrics", conn)
+        with engine.begin() as conn:
+            conn.exec_driver_sql(build_metrics_view_sql(view_name=test_view, source_table=test_table))
+            sql_result = pd.read_sql(f"SELECT * FROM {test_view}", conn)
+    finally:
+        with engine.begin() as conn:
+            conn.exec_driver_sql(f"DROP VIEW IF EXISTS {test_view}")
+            conn.exec_driver_sql(f"DROP TABLE IF EXISTS {test_table}")
 
     sort_cols = ["session_key", "driver_number", "lap_number"]
     for key in ("gap_to_leader", "tyre_age", "pit_delta", "degradation_rate"):

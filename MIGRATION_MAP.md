@@ -1,9 +1,9 @@
 # Migration Map: what moved, what got rewritten, what got dropped
 
-This branch (`new-repo-scaffold`) is a staged snapshot of the target repo —
-not a diff against the old one, the actual proposed end state. Push it as
-the new repo's initial branch (see "How to move this" at the bottom).
-Everything below is categorized honestly: **ported** (identical logic, new
+This is the record of the move from the prior repo
+(`A-Kuo/FastF1-Pit-Strategy-Optimization`) into this one. That repo staged the
+rewrite on a `new-repo-scaffold` branch; this repo is where it now lives, and
+the prior repo is superseded. Everything below is categorized honestly: **ported** (identical logic, new
 location/imports), **rewritten** (same intent, materially different
 implementation), **new** (didn't exist before), or **dropped** (not carried
 forward, with the reason).
@@ -45,8 +45,10 @@ forward, with the reason).
 | `build_features.py`'s `stint_age_squared`, `race_progress`, `pace_delta` | The prior repo's model features, computed inline four times over; now single, governed, versioned definitions. |
 | `build_features.py`'s `gap_closing_rate`, `relative_pace_delta`, `pit_lane_loss_by_circuit` | Three of the four proposed strategy-context features, built for real (see `docs/decisions/005-strategy-context-features.md`). |
 | `scripts/train_model.py`, `scripts/ingest_data.py`, `scripts/apply_metrics_view.py` | Actual runnable entry points tying the package together — the prior repo's scripts existed but several had real bugs in their invocation (see `docs/decisions/`). |
-| `Makefile` | `make test`, `make lint`, `make gate` (the CI gate, locally), `make ingest`, `make train`, `make app`, `make docker-up`. |
-| `docs/` (methodology, data-quality, feature-engineering, model-evaluation, limitations, decisions/001–006) | Replaces the root-level phase-summary sprawl (`FINAL_SUMMARY.md`, `TECHNICAL_SUMMARY.md`, `TASK_COMPLETION_SUMMARY.md`, `PHASE_1_*.md`, `QUICK_REFERENCE.md`) with one navigable structure. |
+| `src/f1_pit_window/monitoring/benchmark.py`, `scripts/run_benchmark.py`, `metrics/benchmark_results.csv` | `make benchmark` times the load/feature-build/train stages and appends runtime + row-throughput, tagged with the producing commit, to a git-tracked CSV — instrumented pipeline performance tracking the prior repo had no equivalent of. |
+| `scripts/validate_artifacts.py`, `scripts/format_release_notes.py`, `.github/workflows/scheduled-retrain.yml` | A cron-triggered (~every 4 months) workflow that re-ingests new F1 seasons, retrains, gates the result through the existing `validate_model_artifacts` check before publishing anything, then releases the model as a dated GitHub Release and commits a fresh `metrics/benchmark_results.csv` row — the prior repo had no scheduled refresh of any kind. |
+| `Makefile` | `make test`, `make lint`, `make gate` (the CI gate, locally), `make ingest`, `make train`, `make benchmark`, `make app`, `make docker-up`. |
+| `docs/` (methodology, data-quality, feature-engineering, model-evaluation, limitations, decisions/001–007) | Replaces the root-level phase-summary sprawl (`FINAL_SUMMARY.md`, `TECHNICAL_SUMMARY.md`, `TASK_COMPLETION_SUMMARY.md`, `PHASE_1_*.md`, `QUICK_REFERENCE.md`) with one navigable structure. `007` also adds a disclaimer header to `research/*.md`'s speculative FastAPI/Kafka brainstorming notes, pointing back at the actual (monolith) architecture. |
 | `pyproject.toml`, `setup.cfg` | pytest config (`pythonpath = ["src"]`, coverage settings) and flake8 config, replacing a bare `pytest.ini`. |
 
 ## Dropped — not carried forward, with the reason
@@ -82,15 +84,18 @@ Honest gaps, not silently absent:
 4. **No group-wise calibration, no circuit-holdout evaluation** — listed as
    gaps in `docs/model-evaluation.md` and `docs/decisions/002-temporal-validation.md`.
 
-## How to move this to the new repo
+## How this was moved
 
-```bash
-# From this branch, in this repo:
-git remote add new-repo <the-new-repo's-git-url>
-git push new-repo new-repo-scaffold:main
-```
+The rewrite was staged on the prior repo's `new-repo-scaffold` branch and
+applied here as a single consolidating commit, so this repo's own initial
+commit stays reachable rather than being force-replaced. Carried over in that
+step, beyond the table above: ADR `007-monolith-architecture.md`, the
+benchmarking subsystem, the scheduled-retrain workflow, and `AGENTS.md`.
 
-This preserves the commit authorship trail (including any Claude
-attribution trailers) on the pushed commits — review the branch here first,
-then push once satisfied, rather than copying files by hand and losing that
-history.
+Deliberately **not** carried over from the prior repo's `main`: its
+`models/*.pkl`, `*.npy`, and reported metrics. Those were trained on
+synthetic data (`load_real_data.py`'s `create_realistic_race()`, built on
+`np.random`) against four PascalCase features, so they are both unreproducible
+and incompatible with the current nine-metric registry. Re-run `make ingest &&
+make train` against real FastF1 data to produce numbers this project can
+actually stand behind.
