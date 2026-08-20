@@ -17,12 +17,18 @@ tactical context the model does *not* observe — read
 project anywhere.
 
 > **Current state:** the pipeline is implemented, linted, and tested (142 tests,
-> ~93% coverage on business logic), but **no model has been trained in this
-> repository yet** — `models/`, `results/`, and `metrics/benchmark_results.csv`
-> hold no run output. Follow the Quick start below against a real `DATABASE_URL`
-> to produce actual metrics. Any number quoted in the docs is methodology or a
-> prior-iteration measurement, explicitly labelled as such, never a result from
-> this pipeline.
+> ~93% coverage on business logic). One real run has been produced end to end
+> against real FastF1 data (3 ingested 2024 races — Monaco, Italian GP,
+> Singapore), held out at the race level (train on Monaco + Italian GP, test
+> on Singapore): **ROC-AUC 0.960, F1 0.886** on that held-out race. This is
+> **not** the cross-season protocol [ADR 002](docs/decisions/002-temporal-validation.md)
+> describes (train 2018-2023, test 2024) — this environment's egress policy
+> blocks fetching earlier seasons from FastF1, so only one season's races were
+> available to split. `scripts/train_model_race_holdout.py` documents the
+> substitution and `models/metrics.pkl` carries an explicit `protocol` field
+> so the number can't be mistaken for the documented result. Re-running the
+> real cross-season protocol once more history is ingested is the natural
+> next step; see the Quick start below.
 
 ![Race State view — feature sliders drive a live pit-window probability](docs/images/dashboard-race-state.png)
 

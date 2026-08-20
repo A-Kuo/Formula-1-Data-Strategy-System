@@ -1,1 +1,4 @@
 run_id,timestamp_utc,git_commit,stage,rows_processed,duration_seconds,rows_per_second,notes
+ca377e8a,2026-08-20T15:13:45+00:00,d2d6e01,db_load,3422,0.234,14629.3,years=2024-2024
+ca377e8a,2026-08-20T15:13:46+00:00,d2d6e01,feature_build,3422,0.149,22914.5,features=9
+ca377e8a,2026-08-20T15:13:46+00:00,d2d6e01,train,6844,0.5,13690.9,"train=3422,test=3422"

@@ -73,3 +73,26 @@ races), now `String(20)`. Ingestion of 2022–2024 real data works end to end.
 `pandas==2.0.3` pins were below `fastf1==3.8.3`'s floors (`numpy>=1.26.0`,
 `pandas>=2.1.1`), making the requirement set impossible to install. They are
 now `numpy==1.26.4` / `pandas==2.1.4` (still under streamlit's `numpy<2`).
+
+### First real training run (this environment's network is more restricted)
+
+Some sandboxes (including the Claude Code web environment this branch was
+consolidated in) block outbound requests to `livetiming.formula1.com` and
+`ergast.com`/`jolpi.ca` entirely — `fastf1.get_session(...).load()` for a
+season not already in the FastF1 disk cache will fail. This repo's `cache/`
+directory (gitignored, kept on disk) already holds three fully-cached 2024
+races — Monaco (round 8), Italian GP/Monza (round 16), Singapore (round
+18) — so `scripts/ingest_data.py --years 2024 --races 8,16,18 --cache-dir
+cache/fastf1` works offline against that cache even when live fetches don't.
+
+Because only one season is cached, the documented cross-season protocol
+(`docs/decisions/002-temporal-validation.md`: train 2018-2023, test 2024)
+can't be exercised in that environment. `scripts/train_model_race_holdout.py`
+is a labeled substitute — same features, same model comparison, same
+threshold tuning, but split by race (train: Monaco + Italian GP, test:
+Singapore) instead of by year. It produced ROC-AUC 0.960 / F1 0.886 on the
+held-out race; `models/metrics.pkl["protocol"]` records that this is a
+race-level holdout, not the cross-season result, so it can't be quoted as
+one. Once a session has real network access to FastF1, prefer
+`scripts/train_model.py` with `--train-years 2018,...,2023 --test-years
+2024` per the documented protocol instead.
